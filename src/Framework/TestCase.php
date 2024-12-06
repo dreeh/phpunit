@@ -162,7 +162,7 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     private array $dependencyInput = [];
 
     /**
-     * @var list<MockObjectInternal>
+     * @var list<array{0: MockObjectInternal, 1: non-empty-string}>
      */
     private array $mockObjects = [];
     private TestStatus $status;
@@ -760,13 +760,15 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     }
 
     /**
+     * @param non-empty-string $type
+     *
      * @internal This method is not covered by the backward compatibility promise for PHPUnit
      */
-    final public function registerMockObject(MockObject $mockObject): void
+    final public function registerMockObject(MockObject $mockObject, string $type): void
     {
         assert($mockObject instanceof MockObjectInternal);
 
-        $this->mockObjects[] = $mockObject;
+        $this->mockObjects[] = [$mockObject, $type];
     }
 
     /**
@@ -1141,7 +1143,7 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
         assert($mock instanceof $type);
         assert($mock instanceof MockObject);
 
-        $this->registerMockObject($mock);
+        $this->registerMockObject($mock, $type);
 
         Event\Facade::emitter()->testCreatedMockObject($type);
 
@@ -1163,7 +1165,7 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
 
         assert($mock instanceof MockObject);
 
-        $this->registerMockObject($mock);
+        $this->registerMockObject($mock, implode('|', $interfaces));
 
         Event\Facade::emitter()->testCreatedMockObjectForIntersectionOfInterfaces($interfaces);
 
@@ -1292,12 +1294,12 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     private function verifyMockObjects(): void
     {
         foreach ($this->mockObjects as $mockObject) {
-            if ($mockObject->__phpunit_hasMatchers()) {
+            if ($mockObject[0]->__phpunit_hasMatchers()) {
                 $this->numberOfAssertionsPerformed++;
             }
 
-            $mockObject->__phpunit_verify(
-                $this->shouldInvocationMockerBeReset($mockObject),
+            $mockObject[0]->__phpunit_verify(
+                $this->shouldInvocationMockerBeReset($mockObject[0]),
             );
         }
     }
