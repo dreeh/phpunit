@@ -11,6 +11,7 @@ namespace PHPUnit\Util;
 
 use PHPUnit\TextUI\Configuration\Registry as ConfigurationRegistry;
 use SebastianBergmann\Exporter\Exporter as OriginalExporter;
+use SebastianBergmann\RecursionContext\Context;
 
 /**
  * @no-named-arguments Parameter names are not covered by the backward compatibility promise for PHPUnit
@@ -21,6 +22,10 @@ final class Exporter
 
     public static function export(mixed $value): string
     {
+        if (!self::isExportable($data)) {
+            return '{enable export of objects to see this value}';
+        }
+
         return self::exporter()->export($value);
     }
 
@@ -29,11 +34,19 @@ final class Exporter
      */
     public static function shortenedRecursiveExport(array $data): string
     {
+        if (!self::isExportable($data)) {
+            return '{enable export of objects to see this value}';
+        }
+
         return self::exporter()->shortenedRecursiveExport($data);
     }
 
     public static function shortenedExport(mixed $value): string
     {
+        if (!self::isExportable($data)) {
+            return '{enable export of objects to see this value}';
+        }
+
         return self::exporter()->shortenedExport($value);
     }
 
@@ -48,5 +61,35 @@ final class Exporter
         );
 
         return self::$exporter;
+    }
+
+    private static function isExportable(mixed &$value, ?Context $context = null): bool
+    {
+        if (is_scalar($value) || $value === null) {
+            return true;
+        }
+
+        if (!is_array($value)) {
+            return false;
+        }
+
+        if (!$context) {
+            $context = new Context;
+        }
+
+        if ($context->contains($value) !== false) {
+            return true;
+        }
+
+        $array = $value;
+        $context->add($value);
+
+        foreach ($array as &$_value) {
+            if (!self::isExportable($_value, $context)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
